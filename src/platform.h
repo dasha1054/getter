@@ -40,7 +40,9 @@ public:
     enum Key : int {
         K_W = 1, K_A, K_S, K_D, K_SPACE, K_LMB, K_RMB, K_ESCAPE, K_ENTER,
         K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9, K_R, K_TAB, K_M, K_P,
-        K_LEFT, K_RIGHT, K_UP, K_DOWN, K_Q, K_E, K_SHIFT, K_CTRL, K_COUNT
+        K_LEFT, K_RIGHT, K_UP, K_DOWN, K_Q, K_E, K_SHIFT, K_CTRL,
+        K_BRACKET_L, K_BRACKET_R, // [ и ] — смена уровня как changelevel
+        K_COUNT
     };
 
 private:

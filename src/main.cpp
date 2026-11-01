@@ -50,6 +50,17 @@ static void mapInput(Platform& plat, Game& game) {
     }
     g_prevKey[Platform::K_R] = plat.key(Platform::K_R);
 
+    // [ / ] - смена уровня (changelevel как в Quake)
+    auto changeLevel = [&](int dir) {
+        int nl = game.hud.level + dir;
+        if (nl < 1 || nl > GameMap::levelCount()) return;
+        game.loadLevel(nl); // loadLevel сам ставит hud.level = nl
+    };
+    if (plat.key(Platform::K_BRACKET_L) && !g_prevKey[Platform::K_BRACKET_L]) changeLevel(-1);
+    if (plat.key(Platform::K_BRACKET_R) && !g_prevKey[Platform::K_BRACKET_R]) changeLevel(+1);
+    g_prevKey[Platform::K_BRACKET_L] = plat.key(Platform::K_BRACKET_L);
+    g_prevKey[Platform::K_BRACKET_R] = plat.key(Platform::K_BRACKET_R);
+
     // Enter / LMB - старт из меню
     if (!game.started) {
         if (plat.key(Platform::K_ENTER) || ev.lmbPressed) game.started = true;

@@ -47,6 +47,8 @@ enum PickupType : int {
     PICK_WEAPON,           // оружие (weapon field)
     PICK_INVULN,           // Pentagram of Protection
     PICK_QUAD,             // Quad Damage
+    PICK_KEY1,             // Silver key (уровень 2)
+    PICK_KEY2,             // Gold key (уровень 2)
     PICK_COUNT
 };
 
@@ -110,4 +112,6 @@ struct HudState {
     int pickupsCollected = 0;
     bool dead = false;
     float timeAlive = 0;
+    int keys[4] = {0};        // ключи (индекс = keyId)
+    int level = 1;            // текущий уровень 1..2
 };

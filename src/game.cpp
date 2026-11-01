@@ -29,21 +29,34 @@ void playSfx(SfxId id) { /* без звукового сервера в headless
 static float frand() { return (float)std::rand() / (float)RAND_MAX; }
 static float spreadRand(float s) { return (frand() * 2.f - 1.f) * s; }
 
-void Game::init() { restart(); }
+void Game::init() { hud = HudState{}; hud.level = 1; loadLevel(1); }
 
 void Game::setMessageTime() { messageTime = 3.f; }
 
 void Game::restart() {
-    std::srand(12345);
-    map.buildDemo();
-    player = PlayerState{};
+    int lvl = hud.level;
+    loadLevel(lvl);
+}
+
+void Game::loadLevel(int num) {
+    if (num < 1) num = 1;
+    if (num > GameMap::levelCount()) num = GameMap::levelCount();
+    int keepLevel = num;
+    int keys[4] = {0};
+    // при changelevel часть статуса сохраняем как в Quake DM-серверных map rotation —
+    // здесь: оружие/патроны сбрасываем на стартовые для уровня
     hud = HudState{};
+    hud.level = keepLevel;
+    (void)keys;
+    std::srand(12345 + keepLevel * 777);
+    map.buildLevel(keepLevel);
+    player = PlayerState{};
     hud.weaponsOwned[W_MELEE] = 1;
     enemies.clear(); pickups.clear(); projectiles.clear(); tracers.clear(); explosions.clear();
     weaponNextFire = 0;
-    message = "E1M1 - DEAD SIMPLE";
-    setMessageTime();
     time = 0;
+    message = map.name;
+    setMessageTime();
 
     auto addEnemy = [&](EnemyType t, float x, float y, float z) {
         Enemy e;
@@ -54,49 +67,103 @@ void Game::restart() {
         if (t == EN_OGRE)    { e.hp = 200; e.color = 0xff60a060; e.radius = 0.7f;  e.height = 2.0f; }
         enemies.push_back(e);
     };
-    addEnemy(EN_GRUNT, -8, 2, 0.9f);
-    addEnemy(EN_GRUNT, 8, -4, 0.9f);
-    addEnemy(EN_GRUNT, 2, 10, 0.9f);
-    addEnemy(EN_ENFORCER, -14, -4, 0.9f);
-    addEnemy(EN_ENFORCER, 14, 4, 0.9f);
-    addEnemy(EN_ENFORCER, 0, 14, 4.9f);
-    addEnemy(EN_OGRE, -6, -12, 0.9f);
-    addEnemy(EN_OGRE, 12, 12, 0.9f);
-
     auto addPickup = [&](int type, float x, float y, float z, int weapon, int amount) {
         Pickup p; p.type = type; p.pos = {x, y, z}; p.weapon = weapon; p.amount = amount;
         p.bobPhase = frand() * 6.28f;
         pickups.push_back(p);
     };
-    // Оружие разбросано по карте как в Quake
-    addPickup(PICK_WEAPON, -15, 0, 1.0f, W_SHOTGUN, 0);      // комната слева
-    addPickup(PICK_WEAPON, 15, 0, 1.0f, W_ROCKET, 0);        // комната справа
-    addPickup(PICK_WEAPON, 0, 15, 5.4f, W_PLASMA, 0);         // балкон
-    addPickup(PICK_WEAPON, 0, -12, 1.0f, W_MG, 0);            // юг
-    addPickup(PICK_WEAPON, -5, 8, 1.0f, W_WS, 0);             // гвоздомёт
-    addPickup(PICK_WEAPON, 5, -8, 1.0f, W_SSG, 0);            // двустволка
-    addPickup(PICK_WEAPON, -15, 5, 1.0f, W_SUPER_NAIL, 0);    // супер-гвозди
-    // Боеприпасы
-    addPickup(PICK_SHELLS, -16, -5, 0.9f, 0, 16);
-    addPickup(PICK_SHELLS, 16, 5, 0.9f, 0, 16);
-    addPickup(PICK_AMMO_BOX, 0, -15, 0.9f, 0, 19);
-    addPickup(PICK_AMMO_BOX, 3, -11, 1.8f, 0, 19);
-    addPickup(PICK_ROCKETS, 16, -5, 0.9f, 0, 8);
-    addPickup(PICK_ROCKETS, 12, 0, 0.9f, 0, 8);
-    addPickup(PICK_NAILS, -6, 6, 0.9f, 0, 40);
-    addPickup(PICK_NAILS, -15, -2, 0.9f, 0, 40);
-    addPickup(PICK_PLASMA, 0, 16, 5.4f, 0, 50);
-    addPickup(PICK_PLASMA, -3, 13, 0.9f, 0, 50);
-    // Здоровье/броня
-    addPickup(PICK_HEALTH_SMALL, 6, 6, 0.9f, 0, 15);
-    addPickup(PICK_HEALTH_SMALL, -6, -6, 0.9f, 0, 15);
-    addPickup(PICK_HEALTH_LARGE, 0, 0, 2.0f, 0, 25);
-    addPickup(PICK_HEALTH_LARGE, -16, 3, 0.9f, 0, 25);
-    addPickup(PICK_ARMOR_SMALL, -17, -6, 0.9f, 0, 50);
-    addPickup(PICK_ARMOR_COMBAT, -17, 6, 0.9f, 0, 100);
-    addPickup(PICK_ARMOR_LARGE, 17, -6, 0.9f, 0, 100);
-    addPickup(PICK_QUAD, 0, 17, 5.4f, 0, 0);                  // Quad на балконе
-    addPickup(PICK_INVULN, 17, 6, 0.9f, 0, 0);                // Инвул в правой комнате
+
+    if (keepLevel == 1) {
+        player.pos = {0, -17, 0.9f};
+        player.yaw = 1.5708f;
+        addEnemy(EN_GRUNT, -8, 2, 0.9f);
+        addEnemy(EN_GRUNT, 8, -4, 0.9f);
+        addEnemy(EN_GRUNT, 2, 10, 0.9f);
+        addEnemy(EN_ENFORCER, -14, -4, 0.9f);
+        addEnemy(EN_ENFORCER, 14, 4, 0.9f);
+        addEnemy(EN_ENFORCER, 0, 14, 4.9f);
+        addEnemy(EN_OGRE, -6, -12, 0.9f);
+        addEnemy(EN_OGRE, 12, 12, 0.9f);
+
+        // Оружие разбросано по карте как в Quake
+        addPickup(PICK_WEAPON, -15, 0, 1.0f, W_SHOTGUN, 0);      // комната слева
+        addPickup(PICK_WEAPON, 15, 0, 1.0f, W_ROCKET, 0);        // комната справа
+        addPickup(PICK_WEAPON, 0, 15, 5.4f, W_PLASMA, 0);         // балкон
+        addPickup(PICK_WEAPON, 0, -12, 1.0f, W_MG, 0);            // юг
+        addPickup(PICK_WEAPON, -5, 8, 1.0f, W_WS, 0);             // гвоздомёт
+        addPickup(PICK_WEAPON, 5, -8, 1.0f, W_SSG, 0);            // двустволка
+        addPickup(PICK_WEAPON, -15, 5, 1.0f, W_SUPER_NAIL, 0);    // супер-гвозди
+        // Боеприпасы
+        addPickup(PICK_SHELLS, -16, -5, 0.9f, 0, 16);
+        addPickup(PICK_SHELLS, 16, 5, 0.9f, 0, 16);
+        addPickup(PICK_AMMO_BOX, 0, -15, 0.9f, 0, 19);
+        addPickup(PICK_AMMO_BOX, 3, -11, 1.8f, 0, 19);
+        addPickup(PICK_ROCKETS, 16, -5, 0.9f, 0, 8);
+        addPickup(PICK_ROCKETS, 12, 0, 0.9f, 0, 8);
+        addPickup(PICK_NAILS, -6, 6, 0.9f, 0, 40);
+        addPickup(PICK_NAILS, -15, -2, 0.9f, 0, 40);
+        addPickup(PICK_PLASMA, 0, 16, 5.4f, 0, 50);
+        addPickup(PICK_PLASMA, -3, 13, 0.9f, 0, 50);
+        // Здоровье/броня
+        addPickup(PICK_HEALTH_SMALL, 6, 6, 0.9f, 0, 15);
+        addPickup(PICK_HEALTH_SMALL, -6, -6, 0.9f, 0, 15);
+        addPickup(PICK_HEALTH_LARGE, 0, 0, 2.0f, 0, 25);
+        addPickup(PICK_HEALTH_LARGE, -16, 3, 0.9f, 0, 25);
+        addPickup(PICK_ARMOR_SMALL, -17, -6, 0.9f, 0, 50);
+        addPickup(PICK_ARMOR_COMBAT, -17, 6, 0.9f, 0, 100);
+        addPickup(PICK_ARMOR_LARGE, 17, -6, 0.9f, 0, 100);
+        addPickup(PICK_QUAD, 0, 17, 5.4f, 0, 0);                  // Quad на балконе
+        addPickup(PICK_INVULN, 17, 6, 0.9f, 0, 0);                // Инвул в правой комнате
+    } else {
+        // E1M2 THE DUNGEON — старт: дробовик, дальше silver key -> gold key
+        player.pos = {0, -15, 0.9f};
+        player.yaw = 1.5708f;
+        hud.weaponsOwned[W_SHOTGUN] = 1;
+        hud.currentWeapon = W_SHOTGUN;
+        hud.ammo[1] = 20;
+
+        addEnemy(EN_GRUNT, -18, -13, 0.9f);   // левая камера
+        addEnemy(EN_GRUNT, 18, -13, 0.9f);    // правая камера
+        addEnemy(EN_GRUNT, -8, -2, 0.9f);
+        addEnemy(EN_ENFORCER, 8, -2, 0.9f);
+        addEnemy(EN_ENFORCER, -12, 2, 0.9f);
+        addEnemy(EN_ENFORCER, 12, 14, 0.9f);  // тронный зал
+        addEnemy(EN_OGRE, 0, 0, 0.9f);        // центр среднего зала
+        addEnemy(EN_OGRE, -6, 15, 2.5f);      // ниша с серебряным ключом
+        addEnemy(EN_OGRE, 0, 15.5f, 2.5f);    // у трона
+
+        addPickup(PICK_KEY1, 0, -13, 0.9f, 0, 1);     // silver key в стартовой комнате (открывает 1-ю дверь)
+        addPickup(PICK_KEY2, 0, 16.5f, 3.4f, 0, 2);   // gold key в северной нише за 1-й дверью
+        addPickup(PICK_WEAPON, 16, -13, 0.9f, W_MG, 0); // пулемёт в правой камере
+        addPickup(PICK_WEAPON, -10, -13, 0.9f, W_WS, 0);
+        addPickup(PICK_WEAPON, 0, 3, 1.0f, W_ROCKET, 0);       // центр зала
+        addPickup(PICK_WEAPON, 0, 15, 3.4f, W_PLASMA, 0);      // ниша
+        addPickup(PICK_WEAPON, 0, 16, 2.9f, W_SSG, 0);
+        addPickup(PICK_SHELLS, -4, -14, 0.9f, 0, 16);
+        addPickup(PICK_SHELLS, 4, -14, 0.9f, 0, 16);
+        addPickup(PICK_AMMO_BOX, -12, -13, 0.9f, 0, 19);
+        addPickup(PICK_AMMO_BOX, 12, -13, 0.9f, 0, 19);
+        addPickup(PICK_ROCKETS, -16, 0, 0.9f, 0, 8);
+        addPickup(PICK_ROCKETS, 16, 0, 0.9f, 0, 8);
+        addPickup(PICK_NAILS, -8, 3, 0.9f, 0, 40);
+        addPickup(PICK_PLASMA, 3, 15, 3.4f, 0, 50);
+        addPickup(PICK_HEALTH_SMALL, -17, -13, 0.9f, 0, 15);
+        addPickup(PICK_HEALTH_SMALL, 17, -13, 0.9f, 0, 15);
+        addPickup(PICK_HEALTH_LARGE, 0, -12, 0.9f, 0, 25);
+        addPickup(PICK_HEALTH_LARGE, -4, 15, 3.4f, 0, 25);
+        addPickup(PICK_ARMOR_SMALL, 10, -13, 0.9f, 0, 50);
+        addPickup(PICK_ARMOR_COMBAT, 0, 13, 2.3f, 0, 100);      // перед троном
+        addPickup(PICK_QUAD, 0, 16, 2.9f, 0, 0);                 // на троне!
+        addPickup(PICK_INVULN, 18, 15, 0.9f, 0, 0);              // восток тронного зала
+    }
+}
+
+void Game::tryUse() {
+    const char* msg = nullptr;
+    if (map.tryUseDoor(player.pos, hud.keys, msg)) {
+        if (msg) { message = msg; setMessageTime(); }
+        playSfx(msg && msg[0] == 'Y' ? SFX_HIT : SFX_PICKUP); // "YOU NEED..." = отказ
+    }
 }
 
 
@@ -577,6 +644,8 @@ void Game::updatePickups(float dt) {
                 case PICK_PLASMA:   giveAmmo(W_PLASMA, pk.amount); message = "+Cells"; break;
                 case PICK_QUAD:     hud.quadTime = 45.f; message = "QUAD DAMAGE!"; break;
                 case PICK_INVULN:   hud.invulnTime = 30.f; message = "INVULNERABILITY!"; break;
+                case PICK_KEY1:     hud.keys[1]++; message = "SILVER KEY"; break;
+                case PICK_KEY2:     hud.keys[2]++; message = "GOLD KEY"; break;
                 case PICK_WEAPON: {
                     int w = pk.weapon;
                     if (!hud.weaponsOwned[w]) {
@@ -644,10 +713,16 @@ void Game::update(float dt) {
 
     movePlayer(dt);
 
+    // USE (E) — открывание дверей; edge-триггер через prevUse
+    static bool prevUse = false;
+    if (input.use && !prevUse) tryUse();
+    prevUse = input.use;
+
     // стрельба
     const WeaponDef& wd = kWeapons[hud.currentWeapon];
     if (input.attack && (wd.automatic || time >= weaponNextFire)) fireWeapon();
 
+    map.updateDoors(dt);
     updateEnemies(dt);
     updateProjectiles(dt);
     updatePickups(dt);

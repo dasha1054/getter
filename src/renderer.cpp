@@ -166,14 +166,14 @@ void Renderer::drawWorld(const Game& g) {
         float depth;
     };
     std::vector<ProjFace> faces;
-    faces.reserve(g.map.brushes.size() * 6);
+    faces.reserve((g.map.brushes.size() + g.map.doors.size()) * 6);
 
     const auto& brushes = g.map.brushes;
-    for (const auto& b : brushes) {
-        // 6 граней куба; проверяем видимость (нормаль к камере) и отбрасываем背面
-        Vec3 camToC = (b.min + b.max) * 0.5f - cam.pos;
+    // brush-ы + двери как единый набор AABB (двери — со смещением curOffset)
+    auto emitBox = [&](const Vec3& bmin, const Vec3& bmax, uint32_t bcolor) {
+        Vec3 camToC = (bmin + bmax) * 0.5f - cam.pos;
         float distC = camToC.length();
-        if (distC > 70.f) continue;
+        if (distC > 70.f) return;
 
         // грани: для каждой оси - две стороны
         for (int axis = 0; axis < 3; axis++) {
@@ -187,27 +187,27 @@ void Renderer::drawWorld(const Game& g) {
 
                 // corners of face
                 Vec3 corners[4];
-                float lo = axis == 0 ? b.min.x : axis == 1 ? b.min.y : b.min.z;
-                float hi = axis == 0 ? b.max.x : axis == 1 ? b.max.y : b.max.z;
+                float lo = axis == 0 ? bmin.x : axis == 1 ? bmin.y : bmin.z;
+                float hi = axis == 0 ? bmax.x : axis == 1 ? bmax.y : bmax.z;
                 float val = side ? hi : lo;
                 int u1 = (axis + 1) % 3, u2 = (axis + 2) % 3;
                 auto setComp = [](Vec3& v, int ax, float val) {
                     if (ax == 0) v.x = val; else if (ax == 1) v.y = val; else v.z = val;
                 };
-                float l1 = u1 == 0 ? b.min.x : u1 == 1 ? b.min.y : b.min.z;
-                float h1 = u1 == 0 ? b.max.x : u1 == 1 ? b.max.y : b.max.z;
-                float l2 = u2 == 0 ? b.min.x : u2 == 1 ? b.min.y : b.min.z;
-                float h2 = u2 == 0 ? b.max.x : u2 == 1 ? b.max.y : b.max.z;
-                corners[0] = b.min; setComp(corners[0], axis, val); setComp(corners[0], u1, l1); setComp(corners[0], u2, l2);
-                corners[1] = b.min; setComp(corners[1], axis, val); setComp(corners[1], u1, h1); setComp(corners[1], u2, l2);
-                corners[2] = b.min; setComp(corners[2], axis, val); setComp(corners[2], u1, h1); setComp(corners[2], u2, h2);
-                corners[3] = b.min; setComp(corners[3], axis, val); setComp(corners[3], u1, l1); setComp(corners[3], u2, h2);
+                float l1 = u1 == 0 ? bmin.x : u1 == 1 ? bmin.y : bmin.z;
+                float h1 = u1 == 0 ? bmax.x : u1 == 1 ? bmax.y : bmax.z;
+                float l2 = u2 == 0 ? bmin.x : u2 == 1 ? bmin.y : bmin.z;
+                float h2 = u2 == 0 ? bmax.x : u2 == 1 ? bmax.y : bmax.z;
+                corners[0] = bmin; setComp(corners[0], axis, val); setComp(corners[0], u1, l1); setComp(corners[0], u2, l2);
+                corners[1] = bmin; setComp(corners[1], axis, val); setComp(corners[1], u1, h1); setComp(corners[1], u2, l2);
+                corners[2] = bmin; setComp(corners[2], axis, val); setComp(corners[2], u1, h1); setComp(corners[2], u2, h2);
+                corners[3] = bmin; setComp(corners[3], axis, val); setComp(corners[3], u1, l1); setComp(corners[3], u2, h2);
 
                 // simple fog by distance
                 float fog = std::max(0.25f, 1.f - distC / 55.f);
                 // directional light fake: top brighter
                 float light = fog * (axis == 2 && side ? 1.15f : (axis == 2 ? 0.55f : 0.8f));
-                uint32_t col = shade(b.color, light);
+                uint32_t col = shade(bcolor, light);
 
                 ProjFace pf; pf.n = 4; pf.color = col; pf.depth = distC;
                 bool ok = true;
@@ -219,6 +219,13 @@ void Renderer::drawWorld(const Game& g) {
                 if (ok) faces.push_back(pf);
             }
         }
+    };
+    for (const auto& b : brushes) emitBox(b.min, b.max, b.color);
+    for (const auto& d : g.map.doors) {
+        if (d.curOffset >= d.travel - 0.01f) continue;
+        Vec3 mn = d.closedMin, mx = d.closedMax;
+        mn.z += d.curOffset; mx.z += d.curOffset;
+        emitBox(mn, mx, d.color);
     }
 
     // painter's algorithm: sort far->near
@@ -315,14 +322,17 @@ void Renderer::drawBillboards(const Game& g) {
             static const uint32_t colors[] = {
                 0xff40ff40, 0xff40ff40, 0xffffff40, 0xffffff40, 0xff40c0ff,
                 0xffc0c0c0, 0xffff8040, 0xffc0c0c0, 0xff60c0ff, 0xffffc040,
-                0xffff4040, 0xffff00ff, 0xff8040ff
+                0xffff4040, 0xff00ffff, 0xffd0d0e0 // PICK_KEY1 silver, PICK_KEY2 gold
             };
             Vec3 pos = pk.pos + Vec3(0.f, 0.f, std::sin(g.time * 3.f + pk.bobPhase) * 0.15f);
             uint32_t col = colors[pk.type % 13];
             if (pk.type == PICK_QUAD) col = 0xff4060ff;
             if (pk.type == PICK_INVULN) col = 0xffff00ff;
-            drawCircleSprite(pos, 0.35f, col, 0.95f);
-            drawCircleSprite(pos, 0.55f, col, 0.25f);
+            if (pk.type == PICK_KEY1) col = 0xffd8d8e8;
+            if (pk.type == PICK_KEY2) col = 0xffffd040;
+            float rad = (pk.type == PICK_KEY1 || pk.type == PICK_KEY2) ? 0.25f : 0.35f;
+            drawCircleSprite(pos, rad, col, 0.95f);
+            drawCircleSprite(pos, rad + 0.2f, col, 0.25f);
         } else if (it.kind == 2) {
             const Projectile& pr = g.projectiles[it.index];
             drawCircleSprite(pr.pos, pr.radius, pr.color, 1.f);
@@ -474,6 +484,24 @@ void Renderer::drawHud(const Game& g) {
     drawText(S * 2, S * 2, buf, 0xffffffff, S);
     snprintf(buf, sizeof(buf), "TIME %d", (int)hud.timeAlive);
     drawText(S * 2, S * 12, buf, 0xffa0a0a0, S);
+    snprintf(buf, sizeof(buf), "%s", g.map.name);
+    drawText(width / 2 - (int)strlen(g.map.name) * 3 * S / 2, S * 2, buf, 0xffc0a060, S);
+    if (hud.keys[1] > 0) drawText(S * 2, S * 22, "SILVER KEY", 0xffd8d8e8, S);
+    if (hud.keys[2] > 0) drawText(S * 2, S * 34, "GOLD KEY", 0xffffd040, S);
+
+    // подсказка USE рядом с дверью
+    for (const auto& d : g.map.doors) {
+        if (d.open || d.animT >= 0.f) continue;
+        float dx = std::fabs((d.closedMin.x + d.closedMax.x) * 0.5f - g.player.pos.x);
+        float dy = std::fabs((d.closedMin.y + d.closedMax.y) * 0.5f - g.player.pos.y);
+        float dz = std::fabs((d.closedMin.z + d.closedMax.z) * 0.5f - g.player.pos.z);
+        if (dx < 4.f && dy < 4.f && dz < 6.f) {
+            const char* hint = d.keyId == 2 ? "PRESS E - GOLD DOOR" :
+                               d.keyId == 1 ? "PRESS E - SILVER DOOR" : "PRESS E - OPEN";
+            drawText(width / 2 - (int)strlen(hint) * 3 * S / 2, height / 2 + S * 14, hint, 0xffffff80, S);
+            break;
+        }
+    }
 
     // quad / invuln
     if (hud.quadTime > 0) {

@@ -70,6 +70,8 @@ public:
 
     void init();
     void restart();
+    void loadLevel(int num); // как changelevel в Quake
+    void tryUse();           // нажатие USE (E) — открывает двери
     void update(float dt);
 
     static constexpr float PLAYER_RADIUS = 0.45f;

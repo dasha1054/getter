@@ -42,6 +42,8 @@ static int mapKeysym(KeySym ks) {
         case 'P': return Platform::K_P;
         case 'Q': return Platform::K_Q;
         case 'E': return Platform::K_E;
+        case '[': return Platform::K_BRACKET_L;
+        case ']': return Platform::K_BRACKET_R;
         case XK_Left_: return Platform::K_LEFT;
         case XK_Right_: return Platform::K_RIGHT;
         case XK_Up_: return Platform::K_UP;

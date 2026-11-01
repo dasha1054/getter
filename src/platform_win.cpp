@@ -39,6 +39,8 @@ static int mapVK(int vk) {
         case VK_DOWN: return Platform::K_DOWN;
         case 'Q': return Platform::K_Q;
         case 'E': return Platform::K_E;
+        case '[': return Platform::K_BRACKET_L;
+        case ']': return Platform::K_BRACKET_R;
         case VK_SHIFT: return Platform::K_SHIFT;
         case VK_CONTROL: return Platform::K_CTRL;
     }
