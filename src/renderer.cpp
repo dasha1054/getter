@@ -21,7 +21,6 @@ void Renderer::init(int w, int h) {
 
 void Renderer::setupCamera(const Game& g) {
     const PlayerState& p = g.player;
-    cam.pos = p.pos + Vec3{0, 0, PlayerState{}, 0}; // placeholder overwritten below
     cam.pos = p.pos + Vec3{0, 0, Game::PLAYER_HEIGHT * 0.5f - 0.1f};
     // bob & kick
     float hs = std::sqrt(p.vel.x * p.vel.x + p.vel.y * p.vel.y);

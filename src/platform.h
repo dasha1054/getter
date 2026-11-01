@@ -1,7 +1,13 @@
 // platform.h - кроссплатформенный слой: окно, ввод, вывод кадра. Без внешних библиотек.
-// Windows: GDI + raw-ish mouse (SetWindowsPos для relative). Linux: X11 (если есть) иначе headless.
+// Windows: GDI + raw-ish mouse (SetWindowsPos для relative). Linux: X11 без заголовков (собственные объявления).
 #pragma once
 #include <cstdint>
+
+#ifndef _WIN32
+// Минимальные объявления X11 (см. x11_minimal.h) — собираем без libX11-dev заголовков,
+// линкуемся с системной libX11.
+#include "x11_minimal.h"
+#endif
 
 struct WindowHandle {
     void* native = nullptr; // HWND или Display*
