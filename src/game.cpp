@@ -3,6 +3,29 @@
 #include <algorithm>
 #include <cstdlib>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+void playSfx(SfxId id) {
+    // частоты/длительности в духе Q1 через speaker Beep
+    switch (id) {
+        case SFX_FIRE:      Beep(700, 30); break;
+        case SFX_SHOTGUN:   Beep(250, 60); break;
+        case SFX_ROCKET:    Beep(180, 90); break;
+        case SFX_PLASMA:    Beep(1200, 40); break;
+        case SFX_HIT:       Beep(500, 25); break;
+        case SFX_EXPLOSION: Beep(90, 160); break;
+        case SFX_PICKUP:    Beep(900, 50); break;
+        case SFX_DEATH:     Beep(120, 300); break;
+        case SFX_JUMP:      Beep(400, 20); break;
+        default: break;
+    }
+}
+#else
+#include <cstdio>
+void playSfx(SfxId id) { /* без звукового сервера в headless/Linux сборке — no-op */ (void)id; }
+#endif
+
 static float frand() { return (float)std::rand() / (float)RAND_MAX; }
 static float spreadRand(float s) { return (frand() * 2.f - 1.f) * s; }
 
@@ -103,6 +126,7 @@ void Game::tryJump() {
     if (input.jump && player.onGround && !hud.dead) {
         player.vel.z = JUMP_VELOCITY;
         player.onGround = false;
+        playSfx(SFX_JUMP);
     }
 }
 
@@ -242,6 +266,12 @@ void Game::fireWeapon() {
     if (w != W_MELEE) hud.ammo[ai] -= wd.ammoPerShot;
     weaponNextFire = time + wd.fireInterval;
     player.viewKick = 1.f;
+    switch (w) {
+        case W_SHOTGUN: case W_SSG: playSfx(SFX_SHOTGUN); break;
+        case W_ROCKET:              playSfx(SFX_ROCKET);  break;
+        case W_PLASMA:              playSfx(SFX_PLASMA);  break;
+        default:                    playSfx(SFX_FIRE);    break;
+    }
 
     Vec3 eye = player.pos + Vec3{0, 0, PLAYER_HEIGHT * 0.5f - 0.1f};
     Vec3 baseDir = dirFromAngles(player.yaw, player.pitch);
@@ -320,13 +350,15 @@ void Game::hitscanShot(const Vec3& origin, const Vec3& dir, float damage, uint32
         hit->painFlash = 0.15f;
         // knockback
         hit->vel += dir * (damage * 0.02f);
-        if (hit->hp <= 0) { hit->alive = false; hit->deathTime = time; hud.kills++; }
+        if (hit->hp <= 0) { hit->alive = false; hit->deathTime = time; hud.kills++; playSfx(SFX_DEATH); }
+        else playSfx(SFX_HIT);
     }
     tracers.push_back({origin, end, 0.06f, color});
 }
 
 void Game::explodeAt(const Vec3& pos, float radius, float damage, bool fromPlayer) {
     explosions.push_back({pos, 0.f, radius});
+    playSfx(SFX_EXPLOSION);
     // урон врагам
     for (auto& e : enemies) {
         if (!e.alive) continue;
@@ -566,6 +598,7 @@ void Game::updatePickups(float dt) {
                 pk.respawnTime = (pk.type == PICK_QUAD || pk.type == PICK_INVULN) ? 0.f : 20.f;
                 if (pk.type == PICK_QUAD || pk.type == PICK_INVULN) pk.respawnTime = 300.f;
                 hud.pickupsCollected++;
+                playSfx(SFX_PICKUP);
                 setMessageTime();
             }
         }

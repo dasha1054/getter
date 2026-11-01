@@ -27,6 +27,13 @@ struct Explosion {
     float radius;
 };
 
+// простой "звук" через Beep (Windows) / writes to tty bell (Linux headless-safe)
+enum SfxId {
+    SFX_NONE = 0, SFX_FIRE, SFX_SHOTGUN, SFX_ROCKET, SFX_PLASMA,
+    SFX_HIT, SFX_EXPLOSION, SFX_PICKUP, SFX_DEATH, SFX_JUMP
+};
+void playSfx(SfxId id);
+
 struct PlayerState {
     Vec3 pos{0, -17, 0.9f};
     Vec3 vel{0, 0, 0};
