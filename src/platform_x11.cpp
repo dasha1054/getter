@@ -56,10 +56,10 @@ bool Platform::initWindow(int w, int h, const char* title) {
     g_w = w; g_h = h;
     g_dpy = XOpenDisplay(nullptr);
     if (!g_dpy) { fprintf(stderr, "No X display. Run under X11/Wayland(XWayland).\n"); return false; }
-    int scr = DefaultScreen(g_dpy);
-    Window root = RootWindow(g_dpy, scr);
+    int scr = XDefaultScreen(g_dpy);
+    Window root = XRootWindow(g_dpy, scr);
     g_win = XCreateSimpleWindow(g_dpy, root, 0, 0, (unsigned)w, (unsigned)h, 0,
-                                BlackPixel(g_dpy, scr), BlackPixel(g_dpy, scr));
+                                XBlackPixel(g_dpy, scr), XBlackPixel(g_dpy, scr));
     XStoreName(g_dpy, g_win, title);
     XSelectInput(g_dpy, g_win,
                  ExposureMaskEv | KeyPressMaskEv | KeyReleaseMaskEv |
@@ -146,7 +146,7 @@ void Platform::present(const uint32_t* fb, int w, int h) {
     size_t bytes = (size_t)w * h * 4;
     if (!g_img || w != g_w || h != g_h) {
         if (g_img) XDestroyImage(g_img);
-        Visual* vis = DefaultVisual(g_dpy, DefaultScreen(g_dpy));
+        Visual* vis = XDefaultVisual(g_dpy, XDefaultScreen(g_dpy));
         g_img = XCreateImage(g_dpy, vis, 24, ZPixmap_, 0, nullptr,
                              (unsigned)w, (unsigned)h, 32, 0);
         if (g_imgBuf) free(g_imgBuf);

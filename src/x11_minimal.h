@@ -99,10 +99,10 @@ struct XImageFull {
 extern "C" {
 Display* XOpenDisplay(const char*);
 Status XCloseDisplay(Display*);
-int DefaultScreen(Display*);
-Window RootWindow(Display*, int);
-unsigned long BlackPixel(Display*, int);
-Visual* DefaultVisual(Display*, int);
+int XDefaultScreen(Display*);
+Window XRootWindow(Display*, int);
+unsigned long XBlackPixel(Display*, int);
+Visual* XDefaultVisual(Display*, int);
 int XDefaultDepth(Display*, int);
 Window XCreateSimpleWindow(Display*, Window, int, int, unsigned int, unsigned int,
                            unsigned int, unsigned long, unsigned long);

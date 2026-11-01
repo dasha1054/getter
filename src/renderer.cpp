@@ -318,7 +318,7 @@ void Renderer::drawBillboards(const Game& g) {
                 0xffc0c0c0, 0xffff8040, 0xffc0c0c0, 0xff60c0ff, 0xffffc040,
                 0xffff4040, 0xffff00ff, 0xff8040ff
             };
-            Vec3 pos = pk.pos + Vec3{0, 0, std::sin(time_of(g) * 3.f + pk.bobPhase) * 0.15f};
+            Vec3 pos = pk.pos + Vec3(0.f, 0.f, std::sin(g.time * 3.f + pk.bobPhase) * 0.15f);
             uint32_t col = colors[pk.type % 13];
             if (pk.type == PICK_QUAD) col = 0xff4060ff;
             if (pk.type == PICK_INVULN) col = 0xffff00ff;
