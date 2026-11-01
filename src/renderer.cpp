@@ -290,7 +290,6 @@ void Renderer::drawBillboards(const Game& g) {
             if (!project(top, tx0, ty0, td)) continue;
             float bx0, by0, bd;
             if (!project(bot, bx0, by0, bd)) continue;
-            float lx, rx2;
             float mx, my, md;
             if (!project(c, mx, my, md)) continue;
             float edgeX, edgeY, ed;
@@ -339,7 +338,6 @@ void Renderer::drawBillboards(const Game& g) {
     }
 }
 
-static float time_of(const Game& g) { return g.time; }
 
 void Renderer::drawGun(const Game& g) {
     // псевдо weapon-view: простая форма в зависимости от оружия
